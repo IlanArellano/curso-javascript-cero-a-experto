@@ -155,6 +155,7 @@ const values = {
   curr: 0,
   result: 0,
 };
+let prevType = null;
 
 for (const item of buttons) {
   const button = document.createElement("button");
@@ -167,7 +168,10 @@ for (const item of buttons) {
 function resolveButton(item) {
   switch (item.type) {
     case "input":
-      const prev = result.innerHTML;
+      const prev =
+        prevType !== null && prevType.type === "operator"
+          ? "0"
+          : result.innerHTML;
       const curr = (prev.startsWith("0") ? prev.slice(1) : prev) + item.display;
       result.innerHTML = curr;
       break;
@@ -177,8 +181,9 @@ function resolveButton(item) {
       values.prevs.push(Number(currentValue));
       const resolve = item?.resolve(values) ?? 0;
       values.curr = resolve;
-      input.innerHTML = input.innerHTML + resolve + item.display;
-      result.innerHTML = "0";
+      input.innerHTML = input.innerHTML + currentValue + item.display;
+      result.innerHTML = resolve;
       break;
   }
+  prevType = item;
 }
