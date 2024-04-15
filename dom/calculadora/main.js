@@ -1,3 +1,4 @@
+//Declaraciones
 const buttons = [
   {
     name: "percentage",
@@ -9,13 +10,13 @@ const buttons = [
     name: "CE",
     display: "CE",
     value: undefined,
-    type: "operator",
+    type: "clear",
   },
   {
     name: "C",
     display: "C",
     value: undefined,
-    type: "operator",
+    type: "clear",
   },
   {
     name: "back",
@@ -67,9 +68,15 @@ const buttons = [
   },
   {
     name: "multiplication",
-    display: "X",
+    display: "x",
     value: undefined,
     type: "operator",
+    resolve: () => {
+      const l = values.prevs.length;
+      if (l === 0) return 0;
+      if (values.curr) return values.curr * values.prevs[l - 1];
+      return values.prevs[l - 1];
+    },
   },
   {
     name: "four",
@@ -94,6 +101,12 @@ const buttons = [
     display: "-",
     value: undefined,
     type: "operator",
+    resolve: () => {
+      const l = values.prevs.length;
+      if (l === 0) return 0;
+      if (values.curr) return values.curr - values.prevs[l - 1];
+      return values.prevs[l - 1];
+    },
   },
   {
     name: "one",
@@ -118,10 +131,11 @@ const buttons = [
     display: "+",
     value: "+",
     type: "operator",
-    resolve: (values) => {
+    resolve: () => {
       const l = values.prevs.length;
       if (l === 0) return 0;
-      if (values.curr) return values.prevs[l - 1] + values.curr;
+      console.log({ values });
+      if (values.curr) return values.curr + values.prevs[l - 1];
       return values.prevs[l - 1];
     },
   },
@@ -135,13 +149,13 @@ const buttons = [
     name: "dot",
     display: ".",
     value: undefined,
-    type: "operator",
+    type: "input",
   },
   {
     name: "equal",
     display: "=",
     value: undefined,
-    type: "operator",
+    type: "equal",
   },
 ];
 
@@ -150,19 +164,81 @@ const CalculatorButtonsContainer = document.querySelector(
 );
 const input = document.querySelector("#input");
 const result = document.querySelector("#result");
-const values = {
+const INITIAL = {
   prevs: [0],
   curr: 0,
-  result: 0,
+  hasResultCalculated: false,
 };
+let values = createValues();
 let prevType = null;
+let prevOperator = null;
 
+//utilidades
+function fixNumberStr(str) {
+  return str.startsWith("0") ? str.slice(1) : str;
+}
+
+function createValues() {
+  return structuredClone(INITIAL);
+}
+
+function isOperator(item) {
+  return item !== null && item.type === "operator";
+}
+
+//Funcionalidad
 for (const item of buttons) {
   const button = document.createElement("button");
 
   button.innerHTML = item.display;
   button.addEventListener("click", () => resolveButton(item));
   CalculatorButtonsContainer.appendChild(button);
+}
+
+function pushStackValue() {
+  const currentValue = result.innerHTML;
+  if (!currentValue || currentValue === "0") return false;
+  values.prevs.push(Number(currentValue));
+  return true;
+}
+
+function clear() {
+  values = createValues();
+  prevType = null;
+  result.innerHTML = "0";
+  input.innerHTML = "0";
+}
+
+function calculateOperator(item) {
+  if (
+    (isOperator(prevType) && item.name !== prevType.name) ||
+    !pushStackValue()
+  )
+    return;
+  const resolve = values.hasResultCalculated
+    ? values.prevs[values.prevs.length - 1]
+    : (prevOperator ? prevOperator : item)?.resolve() ?? 0;
+  values.hasResultCalculated = false;
+  values.curr = resolve;
+  input.innerHTML =
+    fixNumberStr(input.innerHTML) + result.innerHTML + item.display;
+  result.innerHTML = resolve;
+  prevOperator = item;
+}
+
+function resolveInputs() {
+  if (
+    isOperator(prevType) ||
+    values.hasResultCalculated ||
+    !prevOperator ||
+    !pushStackValue()
+  )
+    return;
+  const resolve = prevOperator?.resolve() ?? 0;
+  values.curr = resolve;
+  input.innerHTML += result.innerHTML;
+  result.innerHTML = resolve;
+  values.hasResultCalculated = true;
 }
 
 function resolveButton(item) {
@@ -172,17 +248,17 @@ function resolveButton(item) {
         prevType !== null && prevType.type === "operator"
           ? "0"
           : result.innerHTML;
-      const curr = (prev.startsWith("0") ? prev.slice(1) : prev) + item.display;
+      const curr = fixNumberStr(prev) + item.display;
       result.innerHTML = curr;
       break;
     case "operator":
-      const currentValue = result.innerHTML;
-      if (!currentValue || currentValue === "0") return;
-      values.prevs.push(Number(currentValue));
-      const resolve = item?.resolve(values) ?? 0;
-      values.curr = resolve;
-      input.innerHTML = input.innerHTML + currentValue + item.display;
-      result.innerHTML = resolve;
+      calculateOperator(item);
+      break;
+    case "clear":
+      clear();
+      break;
+    case "equal":
+      resolveInputs();
       break;
   }
   prevType = item;
