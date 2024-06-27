@@ -47,6 +47,12 @@ const buttons = [
     display: "/",
     value: undefined,
     type: "operator",
+    resolve: () => {
+      const l = values.prevs.length;
+      if (l === 0) return 0;
+      if (values.curr) return values.curr / values.prevs[l - 1];
+      return values.prevs[l - 1];
+    },
   },
   {
     name: "seven",
@@ -179,7 +185,7 @@ function fixNumberStr(str) {
 }
 
 function createValues() {
-  return structuredClone(INITIAL);
+  return window.structuredClone(INITIAL);
 }
 
 function isOperator(item) {
